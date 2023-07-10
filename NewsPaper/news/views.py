@@ -1,8 +1,13 @@
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, FormView, TemplateView
+from django.contrib.auth.models import User, Group
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
 
 from .filters import NewsFilter
-from .forms import PostForm
-from .models import Post
+from .forms import PostForm, RegisterForm, LoginForm
+from .models import Post, Author
 
 
 # Create your views here.
@@ -12,6 +17,11 @@ class NewsList(ListView):
     context_object_name = 'news'
     queryset = Post.objects.order_by('-id')
     paginate_by = 3
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_not_premium'] = not self.request.user.groups.filter(name='authors').exists()
+        return context
 
 
 class NewsDetail(DetailView):
@@ -25,7 +35,7 @@ class SearchList(ListView):
     template_name = 'search.html'
     context_object_name = 'news'
     queryset = Post.objects.order_by('-id')
-    paginate_by = 10
+    # paginate_by = 10
     form_class = PostForm
 
     def get_context_data(self, **kwargs):
@@ -44,21 +54,71 @@ class SearchList(ListView):
         return super().get(request, *args, **kwargs)
 
 
-class PostCreateView(CreateView):
+class PostCreateView(PermissionRequiredMixin, CreateView):
     template_name = 'add_post.html'
     form_class = PostForm
+    permission_required = ('news.add_post',)
 
 
-class PostUpdateView(UpdateView):
+class PostUpdateView(PermissionRequiredMixin, UpdateView):
     template_name = 'post_update.html'
     form_class = PostForm
+    permission_required = ('news.change_post',)
 
     def get_object(self, **kwargs):
-        id = self.kwargs.get('pk')
-        return Post.objects.get(pk=id)
+        id_id = self.kwargs.get('pk')
+        return Post.objects.get(pk=id_id)
 
 
-class PostDeleteView(DeleteView):
+class PostDeleteView(PermissionRequiredMixin, DeleteView):
     template_name = 'post_delete.html'
     queryset = Post.objects.all()
     success_url = '/news/'
+    permission_required = ('news.delete_post',)
+
+
+class RegisterView(CreateView):
+    model = User
+    form_class = RegisterForm
+    template_name = 'sign/signup.html'
+    success_url = '/'
+
+    def form_valid(self, form):
+        user = form.save()
+        group = Group.objects.get_or_create(name='common')[0]
+        user.groups.add(group)
+        user.save()
+        return super().form_valid(form)
+
+
+class LoginView(FormView):
+    model = User
+    form_class = LoginForm
+    template_name = 'sign/login.html'
+    success_url = '/'
+
+    def form_valid(self, form):
+        username = form.cleaned_data.get('username')
+        password = form.cleaned_data.get('password')
+        user = authenticate(self.request, username=username, password=password)
+        if user is not None:
+            login(self.request, user)
+        return super().form_valid(form)
+
+
+class LogoutView(LoginRequiredMixin, TemplateView):
+    template_name = 'sign/logout.html'
+
+    def get(self, request, *args, **kwargs):
+        logout(request)
+        return super().get(request, *args, **kwargs)
+
+
+@login_required
+def get_author(request):
+    user = request.user
+    Author.objects.create(authorUser=user)
+    premium_group = Group.objects.get(name='authors')
+    if not request.user.groups.filter(name='authors').exists():
+        premium_group.user_set.add(user)
+    return redirect('/')

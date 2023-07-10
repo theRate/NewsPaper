@@ -1,4 +1,4 @@
-{% extends 'flatpages/default.html' %}
+{% extends 'default.html' %}
 {% load custom_filters %}
 
 {% block title %}
@@ -17,5 +17,7 @@ Update post
     <input type="submit" value="Внести изменения">
 </form>
 <br>
-<a href="{% url 'news' %}"><button>Назад к постам</button></a>
+<a href="{% url 'news' %}">
+    <button>Назад к постам</button>
+</a>
 {% endblock content %}

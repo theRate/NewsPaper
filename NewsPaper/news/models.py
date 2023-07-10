@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Sum
+from django.contrib.auth.forms import UserCreationForm
+from django import forms
 
 
 class Author(models.Model):
@@ -96,3 +98,19 @@ class Comment(models.Model):
     def dislike(self):
         self.rating -= 1
         self.save()
+
+
+class BaseRegisterForm(UserCreationForm):
+    email = forms.EmailField(label="Email")
+    first_name = forms.CharField(label="Имя")  # опционально
+    last_name = forms.CharField(label="Фамилия")  # опционально
+
+    class Meta:
+        fields = (
+            'username',
+            'first_name',
+            'last_name',
+            'email',
+            'password1',
+            'password2',
+        )
