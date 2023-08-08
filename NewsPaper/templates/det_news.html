@@ -9,6 +9,11 @@ News
 {% block content %}
 <h1>{{ det_news.title|censor }}</h1>
 <h3>{{ det_news.dateCreation|date:'d-N-Y H:i' }} Автор: {{ det_news.author }}</h3>
+
+{% for c in det_news.postCategory.filter %}
+<a href="{% url 'cat_detail' c.id %}">{{ c }}</a>
+{% endfor %}
+
 <p>{{ det_news.text|censor }}</p>
 
 <hr>
